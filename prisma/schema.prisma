@@ -1,0 +1,29 @@
+generator client {
+  provider      = "prisma-client-js"
+  // linux-musl-openssl-3.0.x — для node:20-alpine (Alpine 3.18+) на проде в Docker
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Application {
+  id              String   @id @default(cuid())
+  templateSlug    String
+  status          String   @default("submitted") // submitted | in_review | issued | rejected
+  data            String   // JSON blob with form values
+  registrationNo  String?  // assigned by admin after review
+  registeredAt    DateTime?
+  validUntil      DateTime?
+  protocolNo      String?
+  generatedFile   String?  // path under STORAGE_DIR
+  finalFile       String?  // path under STORAGE_DIR (after admin re-generates with reg fields)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([templateSlug])
+}

@@ -1,0 +1,30 @@
+node_modules/
+.next/
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# Generated documents
+data/
+storage/
+
+# Smoke-test output
+test-output.docx
+
+# Temp matrix output (используется когда Word держит lock на основной файл)
+docs/test-matrix-full-v2.docx
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# MS Office lock files
+~$*

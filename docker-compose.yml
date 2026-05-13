@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    container_name: global-test-app
+    # Внутренний порт 3000 контейнера наружу на 127.0.0.1:3010 (только локально, nginx прокидывает наружу).
+    # Если перенесёшь на другой порт — поменяй и в /etc/nginx/sites-available/forms.legacygroup.work.
+    ports:
+      - "127.0.0.1:3010:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data       # SQLite БД
+      - ./storage:/app/storage # сгенерированные DOCX
+    environment:
+      DATABASE_URL: "file:/app/data/prod.db"
+      STORAGE_DIR: "/app/storage"
+      NODE_ENV: "production"
