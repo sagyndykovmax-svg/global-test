@@ -7,7 +7,8 @@
 ```powershell
 cd C:\Users\Admin\Documents\GitHub\global-test
 npx tsx scripts/test-dict-cases.ts        # 39 кейсов словаря — должны быть 39/39
-npx tsx scripts/test-tnved.ts             # 11 кейсов ТН ВЭД — 11/11
+npx tsx scripts/test-tnved.ts             # 43 кейса ТН ВЭД — 43/43
+npx tsx scripts/test-tnved-valid.ts       # все коды существуют в ТН ВЭД ЕАЭС — 0 несуществующих
 npx tsx scripts/test-gosts.ts             # 4 кейса ГОСТ-классификации
 npx tsx scripts/test-compose-full.ts      # сводка по памятке P15 + типичным случаям
 npx tsc --noEmit                          # TypeScript clean
@@ -26,7 +27,13 @@ npx tsc --noEmit                          # TypeScript clean
 
 Проверяет: правильное формирование `fabricPhrase` (без скобок с %).
 
-### `test-tnved.ts` — 11 кейсов с явными ожидаемыми кодами
+### `test-tnved-valid.ts` — существование кодов
+Перебирает изделия × производство × пол × состав и сверяет каждый код со списком
+`scripts/fixtures/ett-codes-ch61-62.txt` (извлечён из официальных PDF ЕЭК в `docs/raw/`).
+Не проверяет, что код выбран по смыслу: только что он существует.
+`src/data/ett-*.json` для сверки не использовать: при разборе PDF часть кодов потеряна.
+
+### `test-tnved.ts` — 43 кейса с явными ожидаемыми кодами
 Включая edge-кейсы:
 - Платья швейные синтетика → 6204430000
 - Брюки женские трикотаж шерсть → **6104610001** (EAEU override)

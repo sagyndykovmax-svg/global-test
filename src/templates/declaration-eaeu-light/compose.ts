@@ -678,7 +678,11 @@ type Subgroup =
   | "platja" | "skirt"
   | "pants" | "shorts" | "overall"
   | "blouse" | "shirt" | "suit" | "jacket"
-  | "outerwear" | "tshirt" | "sweater" | "underwear" | "kids" | "tracksuit";
+  | "outerwear" | "anorak" | "tshirt" | "sweater" | "kids" | "tracksuit" | "ski"
+  | "swim_men" | "swim_women"
+  // Бельё в ТН ВЭД делится по виду изделия, а не только по материалу.
+  // "underwear" — прочее бельё (майки швейные, боди, халаты ночные и т.п.)
+  | "briefs" | "nightwear" | "slip" | "underwear" | "bra";
 
 function classifyProduct(
   name: string,
@@ -700,10 +704,22 @@ function classifyProduct(
   }
 
   if (OUTERWEAR_PATTERNS.some((p) => p.test(matchName))) {
-    return { code4: prefix + (isMenItem ? "01" : "02"), subgroup: "outerwear" };
+    // Куртки в ТН ВЭД идут отдельно от пальто/плащей (см. EAEU_LAST_4_OVERRIDES)
+    const subgroup = /(куртк|пуховик|парк)/i.test(matchName) ? "anorak" : "outerwear";
+    return { code4: prefix + (isMenItem ? "01" : "02"), subgroup };
   }
 
-  if (isKnit && /футболк|фуфайк/i.test(matchName)) return { code4: "6109", subgroup: "tshirt" };
+  if (/купальн/i.test(matchName)) {
+    return { code4: isKnit ? "6112" : "6211", subgroup: isMenItem ? "swim_men" : "swim_women" };
+  }
+  if (/костюм/i.test(matchName) && /лыжн/i.test(name)) {
+    return { code4: isKnit ? "6112" : "6211", subgroup: "ski" };
+  }
+  if (/костюм/i.test(matchName) && /спортивн/i.test(name)) {
+    return { code4: isKnit ? "6112" : "6211", subgroup: "tracksuit" };
+  }
+
+  if (isKnit && /футболк|фуфайк|майк/i.test(matchName)) return { code4: "6109", subgroup: "tshirt" };
   if (isKnit && /(свитер|пуловер|кардиган|джемпер|водолазк|свитшот|толстовк)/i.test(matchName)) {
     return { code4: "6110", subgroup: "sweater" };
   }
@@ -734,18 +750,20 @@ function classifyProduct(
     return { code4: prefix + (isMenItem ? "05" : "06"), subgroup: isMenItem ? "shirt" : "blouse" };
   }
 
-  if (UNDERWEAR_PATTERNS.some((p) => p.test(matchName))) {
-    return { code4: prefix + (isMenItem ? "07" : "08"), subgroup: "underwear" };
-  }
+  if (/бюстгальтер/i.test(matchName)) return { code4: "6212", subgroup: "bra" };
 
-  if (/(спортивн|лыжн|трекинг)/i.test(matchName)) {
-    return { code4: prefix + (isKnit ? "12" : "11"), subgroup: "tracksuit" };
+  if (UNDERWEAR_PATTERNS.some((p) => p.test(matchName))) {
+    const code4 = prefix + (isMenItem ? "07" : "08");
+    if (/(трус|кальсон|панталон)/i.test(matchName)) return { code4, subgroup: "briefs" };
+    if (/(пижам|сорочк)/i.test(matchName)) return { code4, subgroup: "nightwear" };
+    if (/комбинац/i.test(matchName) && !isMenItem) return { code4, subgroup: "slip" };
+    return { code4, subgroup: "underwear" };
   }
 
   return null;
 }
 
-function materialDigits(composition: string, subgroup: Subgroup, code4: string): string {
+function materialDigits(composition: string, subgroup: Subgroup, code4: string, isMen: boolean): string {
   const entries = parseCompositionEntries(composition);
   const totals = totalByCat(entries);
 
@@ -764,40 +782,53 @@ function materialDigits(composition: string, subgroup: Subgroup, code4: string):
       if (dom("artificial")) return "44";
       return "49";
     case "skirt":
-      // 6104/6204.51 шерсть, .52 хлопок, .53 синт/искусств, .59 прочие
+      // 6104/6204.51 шерсть, .52 хлопок, .53 синт, .59 прочие (включая искусств)
       if (dom("wool")) return "51";
       if (dom("cotton")) return "52";
-      if (synthArtifTotal > 50) return "53";
+      if (dom("synthetic")) return "53";
       return "59";
     case "pants":
     case "shorts":
     case "overall":
-      // 6103 (муж knit) / 6203 (муж woven): .41 шерсть, .42 хлопок, .43 синт, .49 прочие
-      // 6104 (жен knit) / 6204 (жен woven): .61 шерсть, .62 хлопок, .63 синт, .69 прочие
+      // 6103 (муж knit) / 6203 (муж woven): .41 шерсть, .42 хлопок, .43 синт, .49 прочие (включая искусств)
+      // 6104 (жен knit) / 6204 (жен woven): .61 шерсть, .62 хлопок, .63 синт, .69 прочие (включая искусств)
       if (code4 === "6103" || code4 === "6203") {
         if (dom("wool")) return "41";
         if (dom("cotton")) return "42";
-        if (synthArtifTotal > 50) return "43";
+        if (dom("synthetic")) return "43";
         return "49";
       }
       // 6104 / 6204 (женские)
       if (dom("wool")) return "61";
       if (dom("cotton")) return "62";
-      if (synthArtifTotal > 50) return "63";
+      if (dom("synthetic")) return "63";
       return "69";
     case "blouse":
-      // 6106/6206.10 шёлк/шерсть, .30 хлопок, .40 синт/искусств, .90 прочие
-      if (dom("silk") || dom("wool")) return "10";
+      // 6106 (knit): .10 хлопок, .20 синт/искусств, .90 прочие (шерсть/шёлк/лён — в last4)
+      if (code4 === "6106") {
+        if (dom("cotton")) return "10";
+        if (synthArtifTotal > 50) return "20";
+        return "90";
+      }
+      // 6206 (woven): .10 шёлк, .20 шерсть, .30 хлопок, .40 синт/искусств, .90 прочие
+      if (dom("silk")) return "10";
+      if (dom("wool")) return "20";
       if (dom("cotton")) return "30";
       if (synthArtifTotal > 50) return "40";
       return "90";
     case "shirt":
-      // 6205.10 шерсть, .20 хлопок, .30 синт/искусств, .90 прочие
-      if (dom("wool")) return "10";
+      // 6105 (knit): .10 хлопок, .20 синт/искусств, .90 прочие
+      if (code4 === "6105") {
+        if (dom("cotton")) return "10";
+        if (synthArtifTotal > 50) return "20";
+        return "90";
+      }
+      // 6205 (woven): .20 хлопок, .30 синт/искусств, .90 прочие (шерсть и лён — в last4, .10 нет)
       if (dom("cotton")) return "20";
       if (synthArtifTotal > 50) return "30";
       return "90";
     case "outerwear":
+    case "anorak":
       // 6201/6202 (woven): 20 шерсть, 30 хлопок, 40 синт/искусств, 90 прочие
       // 6101 (knit men): 20 хлопок, 30 синт/искусств, 90 прочие (нет .10!)
       // 6102 (knit women): 10 шерсть, 20 хлопок, 30 синт/искусств, 90 прочие
@@ -830,16 +861,22 @@ function materialDigits(composition: string, subgroup: Subgroup, code4: string):
         if (dom("synthetic")) return "13";
         return "19"; // wool/cotton/artificial/other — всё в .19 split в last4
       }
-      // woven
+      // 6203 (муж woven): .11 шерсть, .12 синт, .19 прочие (хлопок/искусств — в last4)
+      if (code4 === "6203") {
+        if (dom("wool")) return "11";
+        if (dom("synthetic")) return "12";
+        return "19";
+      }
+      // 6204 (жен woven): .11 шерсть, .12 хлопок, .13 синт, .19 прочие (искусств — в last4)
       if (dom("wool")) return "11";
       if (dom("cotton")) return "12";
-      if (synthArtifTotal > 50) return "13";
+      if (dom("synthetic")) return "13";
       return "19";
     case "jacket":
-      // 6103/6104/6203/6204.31 шерсть, .32 хлопок, .33 синт/искусств, .39 прочие
+      // 6103/6104/6203/6204.31 шерсть, .32 хлопок, .33 синт, .39 прочие (включая искусств)
       if (dom("wool")) return "31";
       if (dom("cotton")) return "32";
-      if (synthArtifTotal > 50) return "33";
+      if (dom("synthetic")) return "33";
       return "39";
     case "tshirt":
       // 6109.10 хлопок, .90 прочие (split: .90 200=шерсть, .90 900=прочие)
@@ -851,14 +888,45 @@ function materialDigits(composition: string, subgroup: Subgroup, code4: string):
       if (dom("cotton")) return "20";
       if (synthArtifTotal > 50) return "30";
       return "90";
+    case "briefs":
+      // 6107 кальсоны/трусы: .11 хлопок, .12 синт/искусств, .19 прочие
+      // 6108 трусы/панталоны: .21 хлопок, .22 синт/искусств, .29 прочие
+      // 6207 трусы/кальсоны: .11 хлопок, .19 прочие. 6208 — отдельной позиции нет, «прочие» .9x
+      if (code4 === "6107") {
+        if (dom("cotton")) return "11";
+        if (synthArtifTotal > 50) return "12";
+        return "19";
+      }
+      if (code4 === "6207") return dom("cotton") ? "11" : "19";
+      if (code4 === "6108") {
+        if (dom("cotton")) return "21";
+        if (synthArtifTotal > 50) return "22";
+        return "29";
+      }
+      if (dom("cotton")) return "91";
+      if (synthArtifTotal > 50) return "92";
+      return "99";
+    case "nightwear":
+      // 6108 ночные сорочки/пижамы: .31 хлопок, .32 синт/искусств, .39 прочие
+      // 6107/6207/6208: .21 хлопок, .22 синт/искусств, .29 прочие
+      if (code4 === "6108") {
+        if (dom("cotton")) return "31";
+        if (synthArtifTotal > 50) return "32";
+        return "39";
+      }
+      if (dom("cotton")) return "21";
+      if (synthArtifTotal > 50) return "22";
+      return "29";
+    case "slip":
+      // 6108/6208 комбинации: .11 синт/искусств, .19 прочие
+      return synthArtifTotal > 50 ? "11" : "19";
     case "underwear":
-      // 6107 (муж knit): .11 хлопок (трусы), .12 синт, .19 прочие — но мы упрощаем
-      // 6108 (жен knit): .21 хлопок, .22 синт, .29 прочие
-      // 6207 (муж woven): .11 хлопок, .19 прочие, .21 хлопок ночные, .22 синт, .29 прочие
-      // 6208 (жен woven): .11 синт сорочки, .21 хлопок, .22 синт, .29 прочие
-      if (dom("cotton")) return "20";
-      if (synthArtifTotal > 50) return "30";
-      return "90";
+      // 6107/6207: .91 хлопок, .99 прочие. 6108/6208: .91 хлопок, .92 синт/искусств, .99 прочие
+      if (dom("cotton")) return "91";
+      if (code4 === "6107" || code4 === "6207") return "99";
+      return synthArtifTotal > 50 ? "92" : "99";
+    case "bra":
+      return "10";
     case "kids":
       // 6111 (knit): .20 хлопок, .30 синт, .90 прочие
       // 6209 (woven): .20 хлопок, .30 синт, .90 прочие
@@ -866,6 +934,25 @@ function materialDigits(composition: string, subgroup: Subgroup, code4: string):
       if (synthArtifTotal > 50) return "30";
       return "90";
     case "tracksuit":
+      // 6112 (knit): .11 хлопок, .12 синт, .19 прочие
+      if (code4 === "6112") {
+        if (dom("cotton")) return "11";
+        if (dom("synthetic")) return "12";
+        return "19";
+      }
+      // 6211 (woven): муж .32/.33/.39, жен .42/.43/.49 — хлопок/синт-искусств/прочие
+      if (dom("cotton")) return isMen ? "32" : "42";
+      if (synthArtifTotal > 50) return isMen ? "33" : "43";
+      return isMen ? "39" : "49";
+    case "ski":
+      return "20";
+    case "swim_men":
+      // 6112 (knit): .31 синт, .39 прочие. 6211 (woven): .11 без деления по материалу
+      if (code4 === "6211") return "11";
+      return dom("synthetic") ? "31" : "39";
+    case "swim_women":
+      if (code4 === "6211") return "12";
+      return dom("synthetic") ? "41" : "49";
     default:
       if (dom("cotton")) return "20";
       if (synthArtifTotal > 50) return "30";
@@ -873,9 +960,18 @@ function materialDigits(composition: string, subgroup: Subgroup, code4: string):
   }
 }
 
+// 6112 купальные костюмы делятся по содержанию эластичных нитей: от 5% — «1000», иначе «9000».
+function swimwearLast4(composition: string): string {
+  const elastic = parseCompositionEntries(composition)
+    .filter((e) => /(эластан|спандекс|лайкр|резин)/i.test(e.name))
+    .reduce((sum, e) => sum + e.pct, 0);
+  return elastic >= 5 ? "1000" : "9000";
+}
+
 // Источник: ЕЭК ТН ВЭД ЕАЭС главы 61, 62 (docs/raw/ett-ch61.pdf, ett-ch62.pdf).
 // Ключ: `${code4}.${material2}:${subgroup}` → последние 4 цифры 10-значного кода.
 // Где нет записи — используется "0000" (валидно для большинства простых позиций без под-деления).
+// Ключ с суффиксом `:${категория}` важнее общего, если волокно этой категории доминирует (>50%).
 const EAEU_LAST_4_OVERRIDES: Record<string, string> = {
   // === ВЕРХНЯЯ ОДЕЖДА ТРИКОТАЖ (61 серия) ===
   // 6101 (муж knit) — все подгруппы расщеплены: 0100=пальто/полупальто/накидки/плащи, 0900=куртки/ветровки
@@ -887,27 +983,37 @@ const EAEU_LAST_4_OVERRIDES: Record<string, string> = {
   "6102.20:outerwear": "1000",
   "6102.30:outerwear": "1000",
   "6102.90:outerwear": "1000",
+  // Куртки
+  "6101.20:anorak": "9000",
+  "6101.30:anorak": "9000",
+  "6101.90:anorak": "8000",
+  "6102.10:anorak": "9000",
+  "6102.20:anorak": "9000",
+  "6102.30:anorak": "9000",
+  "6102.90:anorak": "9000",
 
   // === ВЕРХНЯЯ ОДЕЖДА ТКАНЬ (62 серия) ===
   // 6201 (муж woven) — все .20/.30/.40/.90 одинаковые 0000 (нет под-деления)
   // 6202 (жен woven) — .20/.30 одинаковые 0000; .40 и .90 split 0001 пальто / 0009 куртки
   "6202.40:outerwear": "0001",
   "6202.90:outerwear": "0001",
+  "6202.40:anorak": "0009",
+  "6202.90:anorak": "0009",
 
   // === КОСТЮМЫ ТРИКОТАЖ (61 серия) ===
   // 6103.10 (муж knit) — split в last4 по материалу: 1000=шерсть, 9000=прочие (cotton/synth/etc all collapse to 9000)
-  "6103.10:suit": "9000",  // default — прочие материалы; см. дополнительные ключи ниже
+  "6103.10:suit": "9000",  // default — прочие материалы
+  "6103.10:suit:wool": "1000",
   // 6104.19 (жен knit прочие материалы) split: 2000=хлопок, 9001=шерсть, 9009=прочие
   "6104.19:suit": "9009",  // default
+  "6104.19:suit:cotton": "2000",
+  "6104.19:suit:wool": "9001",
   // 6104.13 (жен knit синт) — single код, 0000 ок
 
   // === ПИДЖАКИ / ЖАКЕТЫ ТРИКОТАЖ ===
   // 6103.31/32/33 муж knit — single коды 0000 ок
-  // 6103.39 прочие — split: 0001 шерсть / 0009 прочие
-  "6103.39:jacket": "0009",
-  // 6104.31/32/33 жен knit — single 0000 ok
-  // 6104.39 split: 0001 шерсть / 0009 прочие
-  "6104.39:jacket": "0009",
+  // 6103.39 прочие — single 0000
+  // 6104.31/32/33/39 жен knit — single 0000 ok
 
   // === ПИДЖАКИ ТКАНЬ ===
   // 6203.31 шерсть — single 0000
@@ -915,24 +1021,26 @@ const EAEU_LAST_4_OVERRIDES: Record<string, string> = {
   "6203.32:jacket": "9000",
   // 6203.33 синт split: 1000 произв / 9000 прочие
   "6203.33:jacket": "9000",
-  // 6203.39 прочие split: 1100/1900/9000
+  // 6203.39 прочие split: 1100 произв / 1900 искусств / 9000 прочие
   "6203.39:jacket": "9000",
+  "6203.39:jacket:artificial": "1900",
   // 6204.32 жен split: 1000/9000
   "6204.32:jacket": "9000",
   "6204.33:jacket": "9000",
   "6204.39:jacket": "9000",
+  "6204.39:jacket:artificial": "1900",
 
   // === БРЮКИ / ШОРТЫ / КОМБИНЕЗОНЫ ТРИКОТАЖ ===
-  // 6103.41/42/43/49 муж knit: split 0001 брюки/бриджи, 0009 прочие (шорты/комбинезоны)
-  "6103.41:pants": "0001", "6103.41:shorts": "0009", "6103.41:overall": "0009",
+  // 6103.41 шерсть — single 0000
+  // 6103.42/43/49 муж knit: split 0001 брюки/бриджи, 0009 прочие (шорты/комбинезоны)
   "6103.42:pants": "0001", "6103.42:shorts": "0009", "6103.42:overall": "0009",
   "6103.43:pants": "0001", "6103.43:shorts": "0009", "6103.43:overall": "0009",
   "6103.49:pants": "0001", "6103.49:shorts": "0009", "6103.49:overall": "0009",
-  // 6104.61/62/63/69 жен knit
+  "6103.49:shorts:artificial": "0002", "6103.49:overall:artificial": "0002",
+  // 6104.62/63 жен knit — single 0000. 6104.61/69 split как у 6103
   "6104.61:pants": "0001", "6104.61:shorts": "0009", "6104.61:overall": "0009",
-  "6104.62:pants": "0001", "6104.62:shorts": "0009", "6104.62:overall": "0009",
-  "6104.63:pants": "0001", "6104.63:shorts": "0009", "6104.63:overall": "0009",
   "6104.69:pants": "0001", "6104.69:shorts": "0009", "6104.69:overall": "0009",
+  "6104.69:shorts:artificial": "0002", "6104.69:overall:artificial": "0002",
 
   // === БРЮКИ / ШОРТЫ / КОМБИНЕЗОНЫ ТКАНЬ ===
   // 6203.41 шерсть split: 1000 брюки/бриджи, 3000 комбинезоны, 9000 прочие (шорты)
@@ -941,36 +1049,84 @@ const EAEU_LAST_4_OVERRIDES: Record<string, string> = {
   "6203.42:pants": "3500", "6203.42:shorts": "9000", "6203.42:overall": "5900",
   // 6203.43 синт split: 1100/1900 брюки; 3100/3900 комбинез; 9000 прочие
   "6203.43:pants": "1900", "6203.43:shorts": "9000", "6203.43:overall": "3900",
-  // 6203.49 прочие split: 1100/1900 брюки; 3100/3900 комбин; 5000 шорты; 9000 прочие материалы
-  "6203.49:pants": "1900", "6203.49:shorts": "5000", "6203.49:overall": "3900",
+  // 6203.49 из искусственных нитей: 1100/1900 брюки; 3100/3900 комбин; 5000 шорты. 9000 — все прочие материалы
+  "6203.49:pants": "9000", "6203.49:shorts": "9000", "6203.49:overall": "9000",
+  "6203.49:pants:artificial": "1900", "6203.49:shorts:artificial": "5000", "6203.49:overall:artificial": "3900",
   // 6204.61 жен шерсть split: 1000 брюки/бриджи, 8500 прочие
   "6204.61:pants": "1000", "6204.61:shorts": "8500", "6204.61:overall": "8500",
   // 6204.62 хлопок split: брюки 3500/3900 в зависимости; общий default = 3900
   "6204.62:pants": "3900", "6204.62:shorts": "9000", "6204.62:overall": "5900",
   // 6204.63 синт split
   "6204.63:pants": "1800", "6204.63:shorts": "9000", "6204.63:overall": "3900",
-  // 6204.69 прочие
-  "6204.69:pants": "1800", "6204.69:shorts": "5000", "6204.69:overall": "3900",
+  // 6204.69 из искусственных нитей: 1100/1800 брюки; 3100/3900 комбин; 5000 шорты. 9000 — все прочие материалы
+  "6204.69:pants": "9000", "6204.69:shorts": "9000", "6204.69:overall": "9000",
+  "6204.69:pants:artificial": "1800", "6204.69:shorts:artificial": "5000", "6204.69:overall:artificial": "3900",
 
   // === КОСТЮМЫ ТКАНЬ ===
   // 6203.19 (муж woven прочие) split: 1000 хлопок / 3000 искусств / 9000 прочие
   "6203.19:suit": "9000",
+  "6203.19:suit:cotton": "1000",
+  "6203.19:suit:artificial": "3000",
   // 6204.19 (жен woven прочие) split: 1000 искусств / 9000 прочие
   "6204.19:suit": "9000",
+  "6204.19:suit:artificial": "1000",
+
+  // === ПЛАТЬЯ И ЮБКИ ТКАНЬ ===
+  // 6204.49 прочие split: 1000 шёлк / 9000 прочие
+  "6204.49:platja": "9000",
+  "6204.49:platja:silk": "1000",
+  // 6204.59 прочие split: 1000 искусств / 9000 прочие
+  "6204.59:skirt": "9000",
+  "6204.59:skirt:artificial": "1000",
 
   // === РУБАШКИ ===
   // 6205.20 хлопок — single 0000
   // 6205.30 синт — single 0000
   // 6205.90 прочие split: 1000 лён, 8001 шерсть, 8009 прочие
   "6205.90:shirt": "8009",
+  "6205.90:shirt:wool": "8001",
+  "6205.90:shirt:linen": "1000",
+  // 6105.20 (knit) split: 1000 синт / 9000 искусств
+  "6105.20:shirt": "1000",
+  "6105.20:shirt:artificial": "9000",
+  // 6105.90 (knit) split: 1000 шерсть / 9000 прочие
+  "6105.90:shirt": "9000",
+  "6105.90:shirt:wool": "1000",
 
   // === БЛУЗКИ ТКАНЬ ===
   // 6206.10/20/30/40 — single 0000
   // 6206.90 прочие split: 1000 лён / 9000 прочие
   "6206.90:blouse": "9000",
+  "6206.90:blouse:linen": "1000",
 
   // === БЛУЗКИ ТРИКОТАЖ (6106) ===
-  // 6106.10 хлопок, 6106.20 синт/искусств, 6106.90 прочие — single 0000 default
+  // 6106.10 хлопок, 6106.20 синт/искусств — single 0000
+  // 6106.90 прочие split: 1000 шерсть / 3000 шёлк / 5000 лён / 9000 прочие
+  "6106.90:blouse": "9000",
+  "6106.90:blouse:wool": "1000",
+  "6106.90:blouse:silk": "3000",
+  "6106.90:blouse:linen": "5000",
+
+  // === БЕЛЬЁ ===
+  // 6207.99 прочие split: 1000 синт/искусств / 9000 прочие
+  "6207.99:underwear": "9000",
+  "6207.99:underwear:synthetic": "1000",
+  "6207.99:underwear:artificial": "1000",
+  // 6208.19 комбинации прочие split: 0001 хлопок / 0009 прочие
+  "6208.19:slip": "0009",
+  "6208.19:slip:cotton": "0001",
+  // 6212.10 бюстгальтеры split: 1000 в наборах для розничной продажи / 9000 прочие
+  "6212.10:bra": "9000",
+
+  // === СПОРТИВНЫЕ КОСТЮМЫ ТКАНЬ (6211) ===
+  // .32/.33/.42/.43 split: 3100 с подкладкой / 9000 прочие. Подкладка в форме не указывается — default прочие
+  "6211.32:tracksuit": "9000",
+  "6211.33:tracksuit": "9000",
+  "6211.42:tracksuit": "9000",
+  "6211.43:tracksuit": "9000",
+  // .49 split: 0001 шерсть / 0009 прочие
+  "6211.49:tracksuit": "0009",
+  "6211.49:tracksuit:wool": "0001",
 
   // === ФУТБОЛКИ (6109) ===
   // 6109.10 хлопок — single 0000
@@ -1003,8 +1159,17 @@ export function deriveTnVedCode(row: ProductRow): string {
   const isKnit = row.production_type === "knit";
   const group = classifyProduct(name, isKnit, row.gender_hint);
   if (!group) return "";
-  const material = materialDigits(row.product_composition ?? "", group.subgroup, group.code4);
+  const isMen = row.gender_hint === "men" || /мужск/i.test(name);
+  const material = materialDigits(row.product_composition ?? "", group.subgroup, group.code4, isMen);
+  if (group.code4 === "6112" && group.subgroup.startsWith("swim")) {
+    return `${group.code4}${material}${swimwearLast4(row.product_composition ?? "")}`;
+  }
   const overrideKey = `${group.code4}.${material}:${group.subgroup}`;
-  const last4 = EAEU_LAST_4_OVERRIDES[overrideKey] ?? "0000";
+  const totals = totalByCat(parseCompositionEntries(row.product_composition ?? ""));
+  const dominant = (Object.keys(totals) as Category[]).find((c) => totals[c] > 50);
+  const last4 =
+    (dominant && EAEU_LAST_4_OVERRIDES[`${overrideKey}:${dominant}`]) ||
+    EAEU_LAST_4_OVERRIDES[overrideKey] ||
+    "0000";
   return `${group.code4}${material}${last4}`;
 }
