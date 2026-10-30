@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { applicationLabel } from "@/lib/applications";
+import { requireAdmin, requireOwner } from "@/lib/auth";
 import { getTemplate } from "@/templates/registry";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -13,6 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function AdminListPage() {
   if (!(await requireAdmin())) redirect("/admin/login");
+  const isOwner = await requireOwner();
 
   const apps = await prisma.application.findMany({
     orderBy: { createdAt: "desc" },
@@ -23,9 +25,16 @@ export default async function AdminListPage() {
     <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Заявки</h1>
-        <form action="/api/admin/logout" method="POST">
-          <button className="text-sm text-muted-foreground hover:underline">Выйти</button>
-        </form>
+        <div className="flex items-center gap-4">
+          {isOwner && (
+            <Link href="/admin/staff" className="text-sm text-muted-foreground hover:underline">
+              Сотрудники
+            </Link>
+          )}
+          <form action="/api/admin/logout" method="POST">
+            <button className="text-sm text-muted-foreground hover:underline">Выйти</button>
+          </form>
+        </div>
       </header>
 
       {apps.length === 0 ? (
@@ -34,6 +43,7 @@ export default async function AdminListPage() {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="py-2 pr-4">Номер</th>
               <th className="py-2 pr-4">Создана</th>
               <th className="py-2 pr-4">Тип</th>
               <th className="py-2 pr-4">Заявитель</th>
@@ -50,9 +60,10 @@ export default async function AdminListPage() {
                 <tr key={a.id} className="border-b border-border hover:bg-accent/50">
                   <td className="py-3 pr-4 font-mono text-xs">
                     <Link href={`/admin/${a.id}`} className="hover:underline">
-                      {new Date(a.createdAt).toLocaleString("ru-RU")}
+                      {applicationLabel(a)}
                     </Link>
                   </td>
+                  <td className="py-3 pr-4 font-mono text-xs">{new Date(a.createdAt).toLocaleString("ru-RU")}</td>
                   <td className="py-3 pr-4">{t?.title.split("(")[0].trim() ?? a.templateSlug}</td>
                   <td className="py-3 pr-4">{String(data.applicant_full_name ?? "—")}</td>
                   <td className="py-3 pr-4 text-muted-foreground">{String(data.applicant_email ?? "—")}</td>

@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { applicationLabel } from "@/lib/applications";
 import { requireAdmin } from "@/lib/auth";
 import { getTemplate } from "@/templates/registry";
 import { AdminDetailForm } from "./form";
@@ -21,7 +22,7 @@ export default async function AdminDetailPage({ params }: { params: Promise<{ id
       <Link href="/admin" className="text-sm text-muted-foreground hover:underline">
         ← Все заявки
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold">Заявка {app.id.slice(0, 8)}</h1>
+      <h1 className="mt-4 text-2xl font-semibold">Заявка {applicationLabel(app)}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {template.title} · создана {new Date(app.createdAt).toLocaleString("ru-RU")}
       </p>

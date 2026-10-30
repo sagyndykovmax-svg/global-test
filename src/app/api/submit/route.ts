@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { applicationLabel, createNumberedApplication } from "@/lib/applications";
 import { getTemplate } from "@/templates/registry";
 import { renderDocx, type DeclarationData } from "@/lib/docx";
 import { saveDocx } from "@/lib/storage";
@@ -48,13 +49,13 @@ async function handle(req: Request) {
     );
   }
 
-  const application = await prisma.application.create({
-    data: {
-      templateSlug: slug,
-      status: "submitted",
-      data: JSON.stringify(parsed.data),
-    },
+  const application = await createNumberedApplication({
+    templateSlug: slug,
+    status: "submitted",
+    data: JSON.stringify(parsed.data),
   });
+  const label = applicationLabel(application);
+  const docxFilename = `application-${application.number ?? application.id}.docx`;
 
   let docxRelPath: string | null = null;
   let docxBuffer: Buffer | null = null;
@@ -76,24 +77,23 @@ async function handle(req: Request) {
     : undefined;
 
   const message =
-    `Новая заявка на ${template.title}\n` +
-    `ID: ${application.id}\n` +
+    `Новая заявка ${label} на ${template.title}\n` +
     (applicantEmail ? `Email клиента: ${applicantEmail}\n` : "") +
     `Открыть: ${process.env.PUBLIC_BASE_URL ?? "http://localhost:3000"}/admin/${application.id}`;
 
   await notifyTelegram(
     message,
-    docxBuffer ? { filename: `application-${application.id}.docx`, buffer: docxBuffer } : undefined,
+    docxBuffer ? { filename: docxFilename, buffer: docxBuffer } : undefined,
   );
 
   const notifyTo = (process.env.NOTIFY_EMAIL_TO ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (notifyTo.length) {
     await sendEmail({
       to: notifyTo.join(","),
-      subject: `Новая заявка: ${template.title}`,
+      subject: `Новая заявка ${label}: ${template.title}`,
       text: message,
       attachments: docxBuffer
-        ? [{ filename: `application-${application.id}.docx`, content: docxBuffer }]
+        ? [{ filename: docxFilename, content: docxBuffer }]
         : undefined,
     });
   }
@@ -101,5 +101,5 @@ async function handle(req: Request) {
   // Note: clients do NOT receive an email — notifications go only to the manager
   // (NOTIFY_EMAIL_TO) and to the Telegram bot (TELEGRAM_CHAT_ID).
 
-  return NextResponse.json({ id: application.id });
+  return NextResponse.json({ id: application.id, label });
 }

@@ -11,6 +11,7 @@ datasource db {
 
 model Application {
   id              String   @id @default(cuid())
+  number          Int?     @unique // простой номер заявки: 1, 2, 3…
   templateSlug    String
   status          String   @default("submitted") // submitted | in_review | issued | rejected
   data            String   // JSON blob with form values
@@ -26,4 +27,13 @@ model Application {
 
   @@index([status, createdAt])
   @@index([templateSlug])
+}
+
+// Сотрудники с доступом к админке. Владелец здесь не хранится — его вход задан в .env.
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 }
