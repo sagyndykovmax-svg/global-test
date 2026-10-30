@@ -21,16 +21,16 @@ const cases: Case[] = [
   { desc: "пальто муж 50/50 прочие",       name: "Пальто",    prod: "woven", gender: "men",   comp: "хлопок 50%, полиэстер 50%", expect: "6201900000" },
   { desc: "пальто жен шерсть тканое",      name: "Пальто",    prod: "woven", gender: "women", comp: "шерсть 70%, нейлон 30%",    expect: "6202200000" },
   { desc: "пальто жен синт",               name: "Пальто",    prod: "woven", gender: "women", comp: "полиэстер 100%",            expect: "6202400001" },
-  { desc: "куртка жен прочие материалы",   name: "Куртки",    prod: "woven", gender: "women", comp: "хлопок 50%, синт 50%",       expect: "6202900001" },
+  { desc: "куртка жен прочие материалы",   name: "Куртки",    prod: "woven", gender: "women", comp: "хлопок 50%, синт 50%",       expect: "6202900009" },
 
   // === ВЕРХНЯЯ ОДЕЖДА ТРИКОТАЖ ===
   { desc: "пальто муж knit хлопок",        name: "Пальто",    prod: "knit",  gender: "men",   comp: "хлопок 100%",               expect: "6101201000" },
-  { desc: "куртка муж knit синт",          name: "Куртки",    prod: "knit",  gender: "men",   comp: "полиэстер 100%",            expect: "6101301000" },
+  { desc: "куртка муж knit синт",          name: "Куртки",    prod: "knit",  gender: "men",   comp: "полиэстер 100%",            expect: "6101309000" },
   { desc: "пальто жен knit шерсть",        name: "Пальто",    prod: "knit",  gender: "women", comp: "шерсть 100%",               expect: "6102101000" },
 
   // === КОСТЮМЫ ТКАНЬ ===
   { desc: "костюм муж шерсть",             name: "Костюмы",   prod: "woven", gender: "men",   comp: "шерсть 100%",               expect: "6203110000" },
-  { desc: "костюм муж хлопок",             name: "Костюмы",   prod: "woven", gender: "men",   comp: "хлопок 100%",               expect: "6203120000" },
+  { desc: "костюм муж хлопок",             name: "Костюмы",   prod: "woven", gender: "men",   comp: "хлопок 100%",               expect: "6203191000" },
   { desc: "костюм жен шерсть",             name: "Костюмы",   prod: "woven", gender: "women", comp: "шерсть 100%",               expect: "6204110000" },
   { desc: "костюм жен синт",               name: "Костюмы",   prod: "woven", gender: "women", comp: "полиэстер 100%",            expect: "6204130000" },
 
@@ -50,7 +50,7 @@ const cases: Case[] = [
 
   // === БРЮКИ ТРИКОТАЖ ===
   { desc: "брюки жен knit шерсть",         name: "Брюки",     prod: "knit",  gender: "women", comp: "шерсть 100%",               expect: "6104610001" },
-  { desc: "шорты жен knit хлопок",         name: "Шорты",     prod: "knit",  gender: "women", comp: "хлопок 100%",               expect: "6104620009" },
+  { desc: "шорты жен knit хлопок",         name: "Шорты",     prod: "knit",  gender: "women", comp: "хлопок 100%",               expect: "6104620000" },
 
   // === ПЛАТЬЯ / ЮБКИ ===
   { desc: "платье жен шерсть",             name: "Платья",    prod: "woven", gender: "women", comp: "шерсть 100%",               expect: "6204410000" },
