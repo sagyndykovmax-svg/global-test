@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession, checkCredentials } from "@/lib/auth";
+import { getSession, checkCredentials, checkStaffCredentials } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,14 @@ async function loginAction(formData: FormData) {
   "use server";
   const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
-  if (!checkCredentials(username, password)) {
+  const isOwner = checkCredentials(username, password);
+  const staffId = isOwner ? null : await checkStaffCredentials(username, password);
+  if (!isOwner && !staffId) {
     redirect("/admin/login?error=1");
   }
   const session = await getSession();
   session.isAdmin = true;
+  session.userId = staffId ?? undefined;
   await session.save();
   redirect("/admin");
 }

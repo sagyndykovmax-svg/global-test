@@ -49,6 +49,18 @@ docker compose exec app npx prisma db push
 
 Идемпотентно — повторный запуск на той же ревизии не делает ничего.
 
+В контейнере Prisma CLI вызывается напрямую, а не через `npx` (он подтянет v7, см. Dockerfile):
+
+```bash
+docker compose run --rm app node node_modules/prisma/build/index.js db push --skip-generate
+```
+
+Флаг `--accept-data-loss` нужен, если добавляется `@unique`-колонка: Prisma требует его
+даже для пустой колонки. Перед этим всегда делай бэкап `data/prod.db`.
+
+После добавления `Application.number` на базе со старыми заявками один раз выполняется
+`prisma/backfill-application-number.sql` (через `db execute --file … --schema prisma/schema.prisma`).
+
 ## Обновление .env
 
 `docker compose restart` НЕ перечитывает `.env`. После правки:

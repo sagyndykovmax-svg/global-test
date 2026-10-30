@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const buf = await readDocx(relPath);
-  const filename = `${app.templateSlug}-${kind}-${app.id.slice(0, 8)}.docx`;
+  const filename = `${app.templateSlug}-${kind}-${app.number ?? app.id.slice(0, 8)}.docx`;
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

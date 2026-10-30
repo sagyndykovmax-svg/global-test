@@ -20,7 +20,7 @@ type Config = {
 export function ApplicationForm({ config }: { config: Config }) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [applicationLabel, setApplicationLabel] = useState<string | null>(null);
 
   const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<Record<string, unknown>>({
     defaultValues: buildDefaults(config.sections),
@@ -146,7 +146,7 @@ export function ApplicationForm({ config }: { config: Config }) {
         body: JSON.stringify({ slug: config.slug, data }),
       });
       const text = await res.text();
-      let json: { id?: string; error?: string } | null = null;
+      let json: { id?: string; label?: string; error?: string } | null = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch {
@@ -167,7 +167,7 @@ export function ApplicationForm({ config }: { config: Config }) {
         setStatus("error");
         return;
       }
-      setApplicationId(json.id);
+      setApplicationLabel(json.label ?? json.id);
       setStatus("success");
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : String(e));
@@ -180,7 +180,7 @@ export function ApplicationForm({ config }: { config: Config }) {
       <div className="rounded-lg border border-border bg-accent/30 p-6">
         <h2 className="text-lg font-semibold">Заявка отправлена</h2>
         <p className="mt-2 text-sm">
-          Номер заявки: <code className="font-mono">{applicationId}</code>
+          Номер заявки: <code className="font-mono">{applicationLabel}</code>
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Заявка передана менеджеру. Мы свяжемся с вами в ближайшее время.

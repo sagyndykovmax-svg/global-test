@@ -10,7 +10,7 @@
 - **Prisma + SQLite** — БД в одном файле `data/prod.db`, тривиальный бэкап
 - **docxtemplater** — подстановка `{плейсхолдеров}` и циклов `{#products}...{/products}` в DOCX
 - **react-hook-form + zod** — клиентская форма с динамическим списком позиций
-- **iron-session** — cookie-авторизация админки (одиночный логин/пароль из `.env`)
+- **iron-session** — cookie-авторизация админки: владелец входит по логину/паролю из `.env`, сотрудники — по учётным записям из таблицы `User` (управляет владелец на `/admin/staff`)
 - **Telegraf** — отправка уведомлений в Telegram (текст + DOCX вложением)
 - **nodemailer** — SMTP-email для менеджера (клиентам письма НЕ отправляются)
 - **Tailwind CSS + минимальный shadcn-style UI** — компоненты `src/components/ui/`
@@ -125,7 +125,7 @@ docker compose exec app npx prisma db push   # если меняли schema.pris
 |---|---|
 | `DATABASE_URL` | строка подключения Prisma (для Docker задана в compose) |
 | `STORAGE_DIR` | путь к каталогу с сгенерированными DOCX |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | логин/пароль админки |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | логин/пароль владельца админки |
 | `SESSION_SECRET` | 64+ символа hex — `node -e "console.log(crypto.randomBytes(32).toString('hex'))"` |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | бот и чат для уведомлений менеджеру |
 | `SMTP_*` + `NOTIFY_EMAIL_TO` | email-уведомления менеджеру |
