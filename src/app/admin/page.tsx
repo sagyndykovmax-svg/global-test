@@ -12,6 +12,11 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: "Отклонена",
 };
 
+/** Предупреждение снимается, когда заявку взяли в работу. */
+function isUndelivered(app: { notifyError: string | null; status: string }): boolean {
+  return Boolean(app.notifyError) && app.status === "submitted";
+}
+
 export default async function AdminListPage() {
   if (!(await requireAdmin())) redirect("/admin/login");
   const isOwner = await requireOwner();
@@ -20,6 +25,7 @@ export default async function AdminListPage() {
     orderBy: { createdAt: "desc" },
     take: 200,
   });
+  const undelivered = apps.filter((a) => isUndelivered(a)).length;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -36,6 +42,12 @@ export default async function AdminListPage() {
           </form>
         </div>
       </header>
+
+      {undelivered > 0 && (
+        <div className="mb-6 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          Новых заявок без уведомления в Telegram: {undelivered}. Проверьте их в списке ниже и настройки группы.
+        </div>
+      )}
 
       {apps.length === 0 ? (
         <p className="text-muted-foreground">Пока нет заявок.</p>
@@ -69,6 +81,7 @@ export default async function AdminListPage() {
                   <td className="py-3 pr-4 text-muted-foreground">{String(data.applicant_email ?? "—")}</td>
                   <td className="py-3 pr-4">
                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{STATUS_LABEL[a.status] ?? a.status}</span>
+                    {isUndelivered(a) && <span className="ml-2 text-xs text-red-600">Не пришла в Telegram</span>}
                   </td>
                   <td className="py-3 font-mono text-xs">{a.registrationNo ?? "—"}</td>
                 </tr>

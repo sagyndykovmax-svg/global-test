@@ -132,7 +132,9 @@ docker compose exec app npx prisma db push   # если меняли schema.pris
 | `PUBLIC_BASE_URL` | публичный URL (для ссылок в письмах) |
 | `GEMINI_API_KEY` / `GROQ_API_KEY` / `OPENAI_API_KEY` | LLM-классификация ТН ВЭД. Приоритет: Gemini (БЕСПЛАТНО) → Groq (БЕСПЛАТНО) → OpenAI (платно). Без ключей — rule-based fallback |
 
-Если Telegram/SMTP не настроены — соответствующие уведомления тихо пропускаются.
+Если SMTP не настроен, письма тихо пропускаются. Сбой Telegram сохраняется в `Application.notifyError` и виден в админке.
+
+Когда группа становится супергруппой, её `TELEGRAM_CHAT_ID` меняется. Новый номер Telegram возвращает в `migrate_to_chat_id`, он есть в ответе на попытку отправки.
 
 ## Гетчи
 

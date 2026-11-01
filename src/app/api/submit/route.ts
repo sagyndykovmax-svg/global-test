@@ -81,10 +81,13 @@ async function handle(req: Request) {
     (applicantEmail ? `Email клиента: ${applicantEmail}\n` : "") +
     `Открыть: ${process.env.PUBLIC_BASE_URL ?? "http://localhost:3000"}/admin/${application.id}`;
 
-  await notifyTelegram(
+  const notifyError = await notifyTelegram(
     message,
     docxBuffer ? { filename: docxFilename, buffer: docxBuffer } : undefined,
   );
+  if (notifyError) {
+    await prisma.application.update({ where: { id: application.id }, data: { notifyError } });
+  }
 
   const notifyTo = (process.env.NOTIFY_EMAIL_TO ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (notifyTo.length) {
