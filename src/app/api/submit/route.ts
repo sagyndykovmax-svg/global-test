@@ -38,7 +38,7 @@ async function handle(req: Request) {
   const parsed = template.schema.safeParse(data);
   if (!parsed.success) {
     const flat = parsed.error.flatten();
-    const firstFieldError = Object.entries(flat.fieldErrors)
+    const firstFieldError = Object.entries(flat.fieldErrors as Record<string, string[] | undefined>)
       .find(([, msgs]) => msgs && msgs.length > 0);
     const summary = firstFieldError
       ? `${firstFieldError[0]}: ${firstFieldError[1]?.[0]}`
