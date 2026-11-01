@@ -27,6 +27,12 @@ export default async function AdminDetailPage({ params }: { params: Promise<{ id
         {template.title} · создана {new Date(app.createdAt).toLocaleString("ru-RU")}
       </p>
 
+      {app.notifyError && (
+        <div className="mt-6 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          Уведомление в Telegram не отправлено: {app.notifyError}
+        </div>
+      )}
+
       <section className="mt-8 rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold">Данные заявки</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">

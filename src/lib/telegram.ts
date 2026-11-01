@@ -9,15 +9,16 @@ function getBot(): Telegraf | null {
   return cached;
 }
 
+/** Возвращает причину сбоя или null, если сообщение ушло. Токен в причину не попадает. */
 export async function notifyTelegram(
   message: string,
   attachment?: { filename: string; buffer: Buffer },
-): Promise<void> {
+): Promise<string | null> {
   const bot = getBot();
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!bot || !chatId) {
     console.warn("[telegram] skipped — TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set");
-    return;
+    return "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set";
   }
   try {
     if (attachment) {
@@ -29,7 +30,10 @@ export async function notifyTelegram(
     } else {
       await bot.telegram.sendMessage(chatId, message);
     }
+    return null;
   } catch (err) {
     console.error("[telegram] send failed:", err);
+    const reason = err instanceof Error ? err.message : String(err);
+    return reason.replace(/bot\d+:[\w-]+/g, "bot***");
   }
 }
